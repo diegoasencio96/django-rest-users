@@ -7,6 +7,11 @@ class BadRequest(APIException):
     default_detail = _("Bad Request")
 
 
+class NotTokenRequest(APIException):
+    status_code = 400
+    default_detail = _("Bad Request")
+
+
 class UserNotFound(APIException):
     status_code = 404
     default_detail = _("User not found")

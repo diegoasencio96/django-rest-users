@@ -12,15 +12,22 @@ from rest_users.serializers import (
 )
 from rest_users.exeptions import BadRequest
 from rest_users.utils.responses import get_ok_response
+from rest_users.validators import token_user_request_validator
+
 User = auth.get_user_model()
 
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def users(request):
-    users_ = User.objects.all().values()
+    user = token_user_request_validator(request)
+    if user.is_superuser:
+        users_ = User.objects.all().values()
+        return Response({
+            'users': users_
+        })
     return Response({
-        'users': users_
+        'detail': 'The Token Owner is not Superuser'
     })
 
 
@@ -52,21 +59,19 @@ def user_create_token(request, user):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def logout(request):
-    user = request.user
+    user = token_user_request_validator(request)
     serializer = LogoutSerializer(
         data=request.data,
         context={'request': request},
     )
     serializer.is_valid(raise_exception=True)
-    data = serializer.validated_data
     auth.logout(request)
-    if data['revoke_token']:
-        try:
-            user.auth_token.delete()
-        except Token.DoesNotExist:
-            raise BadRequest(_("Cannot remove non-existent token"))
+    try:
+        user.auth_token.delete()
+    except Token.DoesNotExist:
+        raise BadRequest(_("Cannot remove non-existent token"))
 
     return get_ok_response(_("Logout successful"))
 
@@ -74,11 +79,12 @@ def logout(request):
 @api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def profile(request):
+    user = token_user_request_validator(request)
     serializer_class = UserProfileSerializer
     if request.method in ['PUT', 'PATCH']:
         partial = request.method == 'PATCH'
         serializer = serializer_class(
-            instance=request.user,
+            instance=user,
             data=request.data,
             partial=partial,
             context={'request': request},
@@ -87,7 +93,7 @@ def profile(request):
         serializer.save()
     else:
         serializer = serializer_class(
-            instance=request.user,
+            instance=user,
             context={'request': request},
         )
     return Response(serializer.data)
@@ -96,13 +102,12 @@ def profile(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
+    user = token_user_request_validator(request)
     serializer = ChangePasswordSerializer(
         data=request.data,
         context={'request': request},
     )
     serializer.is_valid(raise_exception=True)
-
-    user = request.user
     user.set_password(serializer.validated_data['password'])
     user.save()
     return get_ok_response(_("Password changed successfully"))

@@ -1,4 +1,4 @@
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 
 _Field = namedtuple('_Field', [
     'name',
