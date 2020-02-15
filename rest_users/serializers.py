@@ -2,7 +2,6 @@ from rest_framework import serializers
 from django.contrib import auth
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
-
 from django.utils.translation import gettext as _
 from rest_users.utils.api import _build_initial_user
 
@@ -32,6 +31,13 @@ class LoginUserSerializer(serializers.Serializer):
 
 class LogoutSerializer(serializers.Serializer):
     revoke_token = serializers.BooleanField(default=False)
+
+
+class UserGetProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        exclude = ('password',)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
